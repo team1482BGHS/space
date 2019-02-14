@@ -75,7 +75,7 @@ class Robot(wpilib.IterativeRobot):
     wpilib.CameraServer.launch()
 
     self.stage = 0
-    self.stages = [0, 9999, 20000] 
+    self.stages = [0, 10000, 20000] 
     self.init_distance = self.front_right_lift.getSelectedSensorPosition()
     
 
@@ -95,7 +95,7 @@ class Robot(wpilib.IterativeRobot):
     distance = self.front_right_lift.getSelectedSensorPosition()
     delta_distance = distance + -self.init_distance
     
-    self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), 0) # self.stick_drive.getRawAxis(self.AXIS_STEER))
+    self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
 
     self.shift.set(self.stick_drive.getRawButton(self.BUTTON_SHIFT))
 
@@ -107,7 +107,9 @@ class Robot(wpilib.IterativeRobot):
     if abs(self.stick_lift.getRawAxis(self.AXIS_LIFT)) > 0.25 or self.stick_lift.getRawButton(self.BUTTON_STALL):
       self.lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_LIFT), 0)
     elif abs(delta_distance) > 200:
-      self.lift.arcadeDrive(2 * sigmoid(delta_distance) - 1, 0)
+      self.lift.arcadeDrive(2 * sigmoid(delta_distance / 100) - 1, 0)
+
+    self.rear_lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_REAR_LIFT), 0)
 
 
 if __name__ == "__main__":
