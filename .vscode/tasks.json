@@ -6,7 +6,7 @@
     {
       "label": "build",
       "type": "shell",
-      "command": "python3 robot.py deploy --skip-tests",
+      "command": "py -3 robot.py deploy --skip-tests",
       "presentation": {
         "echo": true,
         "reveal": "always",
