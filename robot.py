@@ -8,7 +8,6 @@ a single joystick
 import math
 
 import wpilib
-# from wpilib import drive
 import wpilib.drive
 import wpilib.cameraserver
 import ctre
@@ -24,15 +23,17 @@ class Robot(wpilib.IterativeRobot):
   # stick 1
   AXIS_THROTTLE = 1
   AXIS_STEER = 0
+  AXIS_YAW = 4
+  AXIS_PITCH = 5
   BUTTON_SHIFT = 6
 
   # stick 2
   AXIS_LIFT = 1
   AXIS_REAR_LIFT = 5
   BUTTON_STALL = 6
+  BUTTON_FIRE = 1
   POV_UP = 0
   POV_DOWN = 180
-
 
   def robotInit(self):
     """Robot initialization function"""
@@ -41,14 +42,14 @@ class Robot(wpilib.IterativeRobot):
     self.rear_left_drive = ctre.WPI_TalonSRX(6)
     self.front_right_drive = ctre.WPI_TalonSRX(4)
     self.rear_right_drive = ctre.WPI_TalonSRX(5)
-    self.rear_drive = ctre.WPI_TalonSRX(1)
+    self.rear_drive = ctre.WPI_TalonSRX(3)
 
     self.front_right_drive.setInverted(True)
     self.rear_right_drive.setInverted(True)
 
-    self.front_left_lift = ctre.WPI_TalonSRX(2)
-    self.front_right_lift = ctre.WPI_TalonSRX(3)
-    self.rear_lift = ctre.WPI_TalonSRX(4)
+    self.front_lift = ctre.WPI_TalonSRX(1)
+    # self.front_right_lift = ctre.WPI_TalonSRX(3)
+    self.rear_lift = ctre.WPI_TalonSRX(2)
 
     self.drive = wpilib.drive.DifferentialDrive(
       wpilib.SpeedControllerGroup(self.front_left_drive, self.rear_left_drive),
@@ -59,7 +60,7 @@ class Robot(wpilib.IterativeRobot):
     self.rear_drive = wpilib.drive.DifferentialDrive(self.rear_drive, self.rear_drive)
     self.rear_drive.setExpiration(0.1)
 
-    self.lift = wpilib.drive.DifferentialDrive(self.front_left_lift, self.front_right_lift)
+    self.lift = wpilib.drive.DifferentialDrive(self.front_lift, self.front_lift)
     self.lift.setExpiration(0.1)
 
     self.rear_lift = wpilib.drive.DifferentialDrive(self.rear_lift, self.rear_lift)
@@ -69,6 +70,10 @@ class Robot(wpilib.IterativeRobot):
     self.stick_lift = wpilib.Joystick(1)
 
     self.shift = wpilib.DoubleSolenoid(0, 1)
+    self.arm_fire = wpilib.DoubleSolenoid(2, 3)
+
+    self.camera_pitch = wpilib.Servo(2)
+    self.camera_yaw = wpilib.Servo(3)
 
     # self.compressor = wpilib.Compressor(0);
 
@@ -77,8 +82,6 @@ class Robot(wpilib.IterativeRobot):
     self.stage = 0
     self.stages = [0, 10000, 20000] 
     self.init_distance = self.front_right_lift.getSelectedSensorPosition()
-    
-
 
   def autonomousInit(self):
     self.teleopInit()
@@ -93,11 +96,12 @@ class Robot(wpilib.IterativeRobot):
   def teleopPeriodic(self):
     """Runs the motors with tank steering"""
     distance = self.front_right_lift.getSelectedSensorPosition()
-    delta_distance = distance + -self.init_distance
+    delta_distance = distance - self.init_distance
     
     self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
 
     self.shift.set(self.stick_drive.getRawButton(self.BUTTON_SHIFT))
+    self.arm_fire.set(self.stick_lift.getRawButton(self.BUTTON_FIRE))
 
     if self.stick_lift.getPOV() == self.POV_UP and self.stage < len(self.stages):
       self.stage += 1
@@ -111,7 +115,15 @@ class Robot(wpilib.IterativeRobot):
 
     self.rear_lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_REAR_LIFT), 0)
 
+    camera_pitch = self.camera_pitch.get()
+    camera_yaw = self.camera_yaw.get()
+    input_pitch = stick.getRawAxis(AXIS_PITCH)
+    input_yaw = stick.getRawAxis(AXIS_YAW)
+
+    if abs(input_pitch) > 0.15:
+      self.camera_pitch.set(camera_pitch + input_pitch)
+    if abs(input_yaw) > 0.15:
+      self.camera_yaw.set(camera_yaw + input_yaw)
 
 if __name__ == "__main__":
   wpilib.run(Robot)
- 
