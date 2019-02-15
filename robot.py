@@ -48,7 +48,8 @@ class Robot(wpilib.IterativeRobot):
     self.rear_right_drive.setInverted(True)
 
     self.front_lift = ctre.WPI_TalonSRX(1)
-    # self.front_right_lift = ctre.WPI_TalonSRX(3)
+    # self.front_left_lift = ctre.WPI_TalonSRX(0)
+    # self.front_right_lift = ctre.WPI_TalonSRX(1)
     self.rear_lift = ctre.WPI_TalonSRX(2)
 
     self.drive = wpilib.drive.DifferentialDrive(
@@ -81,7 +82,7 @@ class Robot(wpilib.IterativeRobot):
 
     self.stage = 0
     self.stages = [0, 10000, 20000] 
-    self.init_distance = self.front_right_lift.getSelectedSensorPosition()
+    self.init_distance = self.lift.getSelectedSensorPosition()
 
   def autonomousInit(self):
     self.teleopInit()
@@ -95,7 +96,7 @@ class Robot(wpilib.IterativeRobot):
 
   def teleopPeriodic(self):
     """Runs the motors with tank steering"""
-    distance = self.front_right_lift.getSelectedSensorPosition()
+    distance = self.lift.getSelectedSensorPosition()
     delta_distance = distance - self.init_distance
     
     self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
