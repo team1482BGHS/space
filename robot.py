@@ -56,16 +56,16 @@ class Robot(wpilib.IterativeRobot):
       wpilib.SpeedControllerGroup(self.front_left_drive, self.rear_left_drive),
       wpilib.SpeedControllerGroup(self.front_right_drive, self.rear_right_drive)
     )
-    self.drive.setExpiration(0.1)
+    self.drive.setExpiration(0.25)
 
     self.rear_drive = wpilib.drive.DifferentialDrive(self.rear_drive, self.rear_drive)
-    self.rear_drive.setExpiration(0.1)
+    self.rear_drive.setExpiration(0.25)
 
     self.lift = wpilib.drive.DifferentialDrive(self.front_lift, self.front_lift)
-    self.lift.setExpiration(0.1)
+    self.lift.setExpiration(0.25)
 
     self.rear_lift = wpilib.drive.DifferentialDrive(self.rear_lift, self.rear_lift)
-    self.rear_lift.setExpiration(0.1)
+    self.rear_lift.setExpiration(0.25)
 
     self.stick_drive = wpilib.Joystick(0)
     self.stick_lift = wpilib.Joystick(1)
@@ -82,7 +82,7 @@ class Robot(wpilib.IterativeRobot):
 
     self.stage = 0
     self.stages = [0, 10000, 20000] 
-    self.init_distance = self.lift.getSelectedSensorPosition()
+    self.init_distance = self.front_lift.getSelectedSensorPosition()
 
   def autonomousInit(self):
     self.teleopInit()
@@ -96,7 +96,7 @@ class Robot(wpilib.IterativeRobot):
 
   def teleopPeriodic(self):
     """Runs the motors with tank steering"""
-    distance = self.lift.getSelectedSensorPosition()
+    distance = self.front_lift.getSelectedSensorPosition()
     delta_distance = distance - self.init_distance
     
     self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
@@ -118,8 +118,8 @@ class Robot(wpilib.IterativeRobot):
 
     camera_pitch = self.camera_pitch.get()
     camera_yaw = self.camera_yaw.get()
-    input_pitch = stick.getRawAxis(AXIS_PITCH)
-    input_yaw = stick.getRawAxis(AXIS_YAW)
+    input_pitch = self.stick_drive.getRawAxis(self.AXIS_PITCH)
+    input_yaw = self.stick_drive.getRawAxis(self.AXIS_YAW)
 
     if abs(input_pitch) > 0.15:
       self.camera_pitch.set(camera_pitch + input_pitch)
