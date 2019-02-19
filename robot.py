@@ -73,7 +73,7 @@ class Robot(wpilib.IterativeRobot):
     self.stick_lift = wpilib.Joystick(1)
 
     self.shift = wpilib.DoubleSolenoid(0, 1)
-    self.arm_fire = wpilib.DoubleSolenoid(2, 3)
+    self.arm_fire = wpilib.DoubleSolenoid(6, 7)
 
     self.camera_pitch = wpilib.Servo(2)
     self.camera_yaw = wpilib.Servo(3)
@@ -114,7 +114,7 @@ class Robot(wpilib.IterativeRobot):
     if self.stick_lift.getPOV() == self.POV_UP and self.stage < len(self.stages):
       self.stage += 1
     elif self.stick_lift.getPOV() == self.POV_DOWN and self.stage > 0:
-      self.stage -= 0
+      self.stage -= 1
 
     if abs(self.stick_lift.getRawAxis(self.AXIS_LIFT)) > 0.25 or self.stick_lift.getRawButton(self.BUTTON_STALL):
       self.lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_LIFT), 0)
