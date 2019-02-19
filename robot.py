@@ -30,6 +30,8 @@ class Robot(wpilib.IterativeRobot):
   # stick 2
   AXIS_LIFT = 1
   AXIS_REAR_LIFT = 5
+  AXIS_REAR_FORWARD = 3
+  AXIS_REAR_REVERSE = 2
   BUTTON_STALL = 6
   BUTTON_FIRE = 1
   POV_UP = 0
@@ -100,6 +102,11 @@ class Robot(wpilib.IterativeRobot):
     delta_distance = distance - self.init_distance
     
     self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
+
+    input_forward = self.stick_lift.getRawAxis(self.AXIS_REAR_FORWARD)
+    input_reverse = self.stick_lift.getRawAxis(self.AXIS_REAR_REVERSE)
+
+    self.drive.arcadeDrive(input_forward if input_forward > input_reverse else input_reverse, 0)
 
     self.shift.set(self.stick_drive.getRawButton(self.BUTTON_SHIFT))
     self.arm_fire.set(self.stick_lift.getRawButton(self.BUTTON_FIRE))
