@@ -4,7 +4,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "taskName": "deploy",
       "label": "build",
       "type": "shell",
       "command": "py -3 robot.py deploy --skip-tests",

@@ -10,6 +10,7 @@ import math
 import wpilib
 import wpilib.drive
 import wpilib.cameraserver
+# from cscore import CameraServer
 import ctre
 
 def float_round(x, prec=2, base=.05):
@@ -58,16 +59,16 @@ class Robot(wpilib.IterativeRobot):
       wpilib.SpeedControllerGroup(self.front_left_drive, self.rear_left_drive),
       wpilib.SpeedControllerGroup(self.front_right_drive, self.rear_right_drive)
     )
-    self.drive.setExpiration(0.25)
+    self.drive.setExpiration(0.5)
 
     self.rear_drive = wpilib.drive.DifferentialDrive(self.rear_drive, self.rear_drive)
-    self.rear_drive.setExpiration(0.25)
+    self.rear_drive.setExpiration(0.5)
 
     self.lift = wpilib.drive.DifferentialDrive(self.front_lift, self.front_lift)
-    self.lift.setExpiration(0.25)
+    self.lift.setExpiration(0.5)
 
     self.rear_lift = wpilib.drive.DifferentialDrive(self.rear_lift, self.rear_lift)
-    self.rear_lift.setExpiration(0.25)
+    self.rear_lift.setExpiration(0.5)
 
     self.stick_drive = wpilib.Joystick(0)
     self.stick_lift = wpilib.Joystick(1)
@@ -78,9 +79,14 @@ class Robot(wpilib.IterativeRobot):
     self.camera_pitch = wpilib.Servo(2)
     self.camera_yaw = wpilib.Servo(3)
 
+    self.log_timer = wpilib.Timer()
+
     # self.compressor = wpilib.Compressor(0);
 
     wpilib.CameraServer.launch()
+    # camera = CameraServer.getInstance().startAutomaticCapture()
+    # camera.setResolution(426, 240)
+    # camera.setFPS(15)
 
     self.stage = 0
     self.stages = [0, 10000, 20000] 
@@ -106,7 +112,7 @@ class Robot(wpilib.IterativeRobot):
     input_forward = self.stick_lift.getRawAxis(self.AXIS_REAR_FORWARD)
     input_reverse = self.stick_lift.getRawAxis(self.AXIS_REAR_REVERSE)
 
-    self.drive.arcadeDrive(input_forward if input_forward > input_reverse else input_reverse, 0)
+    self.rear_drive.arcadeDrive((input_forward if input_forward > input_reverse else input_reverse) * 0.5, 0)
 
     self.shift.set(self.stick_drive.getRawButton(self.BUTTON_SHIFT))
     self.arm_fire.set(self.stick_lift.getRawButton(self.BUTTON_FIRE))
@@ -123,15 +129,26 @@ class Robot(wpilib.IterativeRobot):
 
     self.rear_lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_REAR_LIFT), 0)
 
-    camera_pitch = self.camera_pitch.get()
-    camera_yaw = self.camera_yaw.get()
-    input_pitch = self.stick_drive.getRawAxis(self.AXIS_PITCH)
+    current_pitch = self.camera_pitch.get()
+    current_yaw = self.camera_yaw.get()
+    input_pitch = -self.stick_drive.getRawAxis(self.AXIS_PITCH)
     input_yaw = self.stick_drive.getRawAxis(self.AXIS_YAW)
 
+    #if self.log_timer.hasPeriodPassed(0.5):
+    self.logger.info(repr({
+      "input_pitch": input_pitch,
+      "current_pitch": current_pitch,
+      "delta_pitch": current_pitch + input_pitch,
+      "input_yaw": input_yaw,
+      "current_yaw": current_yaw,
+      "delta_yaw": current_yaw + input_yaw
+    }))
+      #self.log_timer.reset()
+
     if abs(input_pitch) > 0.15:
-      self.camera_pitch.set(camera_pitch + input_pitch)
+      self.camera_pitch.set(max(0, min(1, current_pitch + input_pitch * 0.05)))
     if abs(input_yaw) > 0.15:
-      self.camera_yaw.set(camera_yaw + input_yaw)
+      self.camera_yaw.set(max(0, min(1, current_yaw + input_yaw * 0.05)))
 
 if __name__ == "__main__":
   wpilib.run(Robot)
