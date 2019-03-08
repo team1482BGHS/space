@@ -18,9 +18,11 @@ def float_round(x, prec=2, base=.05):
   return round(base * round(float(x) / base), prec)
 
 def sigmoid(x):
+  """1 / (1 + e ^ -x)"""
   return 1 / (1 + math.exp(-x))
 
 class Robot(wpilib.IterativeRobot):
+  """Deep space 2019 robot code"""
   # stick 1
   AXIS_THROTTLE = 1
   AXIS_STEER = 0
@@ -48,7 +50,7 @@ class Robot(wpilib.IterativeRobot):
     self.rear_drive = ctre.WPI_TalonSRX(3)
 
     self.front_right_drive.setInverted(True)
-    self.rear_right_drive.setInverted(True)
+    # self.rear_right_drive.setInverted(True)
 
     self.front_lift = ctre.WPI_TalonSRX(1)
     # self.front_left_lift = ctre.WPI_TalonSRX(0)
@@ -114,8 +116,8 @@ class Robot(wpilib.IterativeRobot):
 
     self.rear_drive.arcadeDrive((input_forward if input_forward > input_reverse else input_reverse) * 0.5, 0)
 
-    self.shift.set(self.stick_drive.getRawButton(self.BUTTON_SHIFT))
-    self.arm_fire.set(self.stick_lift.getRawButton(self.BUTTON_FIRE))
+    self.shift.set(self.shift.Value.kForward if self.stick_drive.getRawButton(self.BUTTON_SHIFT) else self.shift.Value.kReverse)
+    self.arm_fire.set(self.arm_fire.Value.kForward if self.stick_lift.getRawButton(self.BUTTON_FIRE) else self.arm_fire.Value.kReverse)
 
     if self.stick_lift.getPOV() == self.POV_UP and self.stage < len(self.stages):
       self.stage += 1
