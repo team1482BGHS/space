@@ -49,13 +49,14 @@ class Robot(wpilib.IterativeRobot):
     self.rear_right_drive = ctre.WPI_TalonSRX(5)
     self.rear_drive = ctre.WPI_TalonSRX(3)
 
-    self.front_right_drive.setInverted(True)
-    # self.rear_right_drive.setInverted(True)
+    self.front_left_drive.setInverted(True)
+    self.rear_left_drive.setInverted(True)
+    self.front_right_drive.setInverted(False)
+    self.rear_right_drive.setInverted(False)
 
     self.front_lift = ctre.WPI_TalonSRX(1)
-    # self.front_left_lift = ctre.WPI_TalonSRX(0)
-    # self.front_right_lift = ctre.WPI_TalonSRX(1)
     self.rear_lift = ctre.WPI_TalonSRX(2)
+    self.encoder = self.front_lift
 
     self.drive = wpilib.drive.DifferentialDrive(
       wpilib.SpeedControllerGroup(self.front_left_drive, self.rear_left_drive),
@@ -76,10 +77,11 @@ class Robot(wpilib.IterativeRobot):
     self.stick_lift = wpilib.Joystick(1)
 
     self.shift = wpilib.DoubleSolenoid(0, 1)
+    self.unlock = wpilib.DoubleSolenoid(2, 3)
     self.arm_fire = wpilib.DoubleSolenoid(6, 7)
 
-    self.camera_pitch = wpilib.Servo(2)
-    self.camera_yaw = wpilib.Servo(3)
+    # self.camera_pitch = wpilib.Servo(2)
+    # self.camera_yaw = wpilib.Servo(3)
 
     self.log_timer = wpilib.Timer()
 
@@ -91,8 +93,8 @@ class Robot(wpilib.IterativeRobot):
     # camera.setFPS(15)
 
     self.stage = 0
-    self.stages = [0, 10000, 20000] 
-    self.init_distance = self.front_lift.getSelectedSensorPosition()
+    self.stages = [0, (37 / 4.76) * 4096]  # 37 inches to travel, 4.76 in/rotation, 4096 units/rotation
+    self.init_distance = self.front_lift.getSelectedSensorPosition()  # lifter should be at bottom (zero)
 
   def autonomousInit(self):
     self.teleopInit()
@@ -105,9 +107,9 @@ class Robot(wpilib.IterativeRobot):
     self.drive.setSafetyEnabled(True)
 
   def teleopPeriodic(self):
-    """Runs the motors with tank steering"""
-    distance = self.front_lift.getSelectedSensorPosition()
-    delta_distance = distance - self.init_distance
+    """Does stuff"""
+    distance = self.front_lift.getSelectedSensorPosition() - self.init_distance
+    desired_distance = self.stages[self.stage]
     
     self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
 
@@ -126,31 +128,31 @@ class Robot(wpilib.IterativeRobot):
 
     if abs(self.stick_lift.getRawAxis(self.AXIS_LIFT)) > 0.25 or self.stick_lift.getRawButton(self.BUTTON_STALL):
       self.lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_LIFT), 0)
-    elif abs(delta_distance) > 200:
-      self.lift.arcadeDrive(2 * sigmoid(delta_distance / 100) - 1, 0)
-
+    elif abs(desired_distance - distance) > 200:
+      # self.lift.arcadeDrive(2 * sigmoid(delta_distance / 100) - 1, 0)
+      self.lift.arcadeDrive(
+        min(1, (desired_distance - distance ) / 2048), 0
+      )
+    else:
+      self.lift.arcadeDrive(0, 0)
     self.rear_lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_REAR_LIFT), 0)
 
-    current_pitch = self.camera_pitch.get()
-    current_yaw = self.camera_yaw.get()
-    input_pitch = -self.stick_drive.getRawAxis(self.AXIS_PITCH)
-    input_yaw = self.stick_drive.getRawAxis(self.AXIS_YAW)
+    # current_pitch = self.camera_pitch.get()
+    # current_yaw = self.camera_yaw.get()
+    # input_pitch = -self.stick_drive.getRawAxis(self.AXIS_PITCH)
+    # input_yaw = self.stick_drive.getRawAxis(self.AXIS_YAW)
 
-    #if self.log_timer.hasPeriodPassed(0.5):
-    self.logger.info(repr({
-      "input_pitch": input_pitch,
-      "current_pitch": current_pitch,
-      "delta_pitch": current_pitch + input_pitch,
-      "input_yaw": input_yaw,
-      "current_yaw": current_yaw,
-      "delta_yaw": current_yaw + input_yaw
-    }))
-      #self.log_timer.reset()
+    if self.log_timer.hasPeriodPassed(0.5):
+      self.logger.info(repr({
+        "distance": distance,
+        "desired_distance": desired_distance
+      }))
+      self.log_timer.reset()
 
-    if abs(input_pitch) > 0.15:
-      self.camera_pitch.set(max(0, min(1, current_pitch + input_pitch * 0.05)))
-    if abs(input_yaw) > 0.15:
-      self.camera_yaw.set(max(0, min(1, current_yaw + input_yaw * 0.05)))
+    # if abs(input_pitch) > 0.15:
+    #   self.camera_pitch.set(max(0, min(1, current_pitch + input_pitch * 0.05)))
+    # if abs(input_yaw) > 0.15:
+    #   self.camera_yaw.set(max(0, min(1, current_yaw + input_yaw * 0.05)))
 
 if __name__ == "__main__":
   wpilib.run(Robot)
