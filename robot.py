@@ -9,7 +9,7 @@ import math
 
 import wpilib
 import wpilib.drive
-import wpilib.cameraserver
+import wpilib.cameraserver as cameraserver
 # from cscore import CameraServer
 import ctre
 
@@ -24,19 +24,20 @@ def sigmoid(x):
 class Robot(wpilib.IterativeRobot):
   """Deep space 2019 robot code"""
   # stick 1
-  AXIS_THROTTLE = 1
-  AXIS_STEER = 0
-  AXIS_YAW = 4
-  AXIS_PITCH = 5
-  BUTTON_SHIFT = 6
+  AXIS_THROTTLE = 1  # l stick
+  AXIS_STEER = 0  # l stick
+  # AXIS_YAW = 4
+  # AXIS_PITCH = 5
+  BUTTON_SHIFT = 6  # r bumper
 
   # stick 2
-  AXIS_LIFT = 1
-  AXIS_REAR_LIFT = 5
-  AXIS_REAR_FORWARD = 3
-  AXIS_REAR_REVERSE = 2
-  BUTTON_STALL = 6
-  BUTTON_FIRE = 1
+  AXIS_LIFT = 1  # r stick
+  AXIS_REAR_LIFT = 5  # l stick
+  AXIS_REAR_FORWARD = 3  # l trigger
+  AXIS_REAR_REVERSE = 2  # r trigger 
+  BUTTON_STALL = 6  # r bumper
+  BUTTON_FIRE = 1  # a
+  BUTTON_UNLOCK = 2  # b
   POV_UP = 0
   POV_DOWN = 180
 
@@ -50,13 +51,15 @@ class Robot(wpilib.IterativeRobot):
     self.rear_drive = ctre.WPI_TalonSRX(3)
 
     self.front_left_drive.setInverted(True)
-    self.rear_left_drive.setInverted(True)
+    self.rear_left_drive.setInverted(False)
     self.front_right_drive.setInverted(False)
-    self.rear_right_drive.setInverted(False)
+    self.rear_right_drive.setInverted(True)
 
     self.front_lift = ctre.WPI_TalonSRX(1)
     self.rear_lift = ctre.WPI_TalonSRX(2)
     self.encoder = self.front_lift
+
+    self.front_lift.setInverted(True)
 
     self.drive = wpilib.drive.DifferentialDrive(
       wpilib.SpeedControllerGroup(self.front_left_drive, self.rear_left_drive),
@@ -77,24 +80,30 @@ class Robot(wpilib.IterativeRobot):
     self.stick_lift = wpilib.Joystick(1)
 
     self.shift = wpilib.DoubleSolenoid(0, 1)
-    self.unlock = wpilib.DoubleSolenoid(2, 3)
-    self.arm_fire = wpilib.DoubleSolenoid(6, 7)
+    self.unlock = wpilib.DoubleSolenoid(4, 5)
+    self.arm_fire = wpilib.DoubleSolenoid(7, 6)
 
     # self.camera_pitch = wpilib.Servo(2)
     # self.camera_yaw = wpilib.Servo(3)
 
     self.log_timer = wpilib.Timer()
+    self.log_timer.start()
 
-    # self.compressor = wpilib.Compressor(0);
+    self.compressor = wpilib.Compressor(0)
 
-    wpilib.CameraServer.launch()
-    # camera = CameraServer.getInstance().startAutomaticCapture()
+
+    # wpilib.CameraServer.launch()
+    # camera_alpha = cameraserver.getInstance().startAutomaticCapture(0)
+    # camera_beta = cameraserver.getInstance().startAutomaticCapture(1)
+    # cameraserver.CameraServer.launch()
+    cameraserver.CameraServer.launch("camera.py:main")
+
     # camera.setResolution(426, 240)
     # camera.setFPS(15)
 
     self.stage = 0
-    self.stages = [0, (37 / 4.76) * 4096]  # 37 inches to travel, 4.76 in/rotation, 4096 units/rotation
-    self.init_distance = self.front_lift.getSelectedSensorPosition()  # lifter should be at bottom (zero)
+    self.stages = [0, 27600]  # 37 inches to travel, 4.76 in/rotation, 4096 units/rotation
+    self.init_distance = self.encoder.getSelectedSensorPosition(0)  # lifter should be at bottom (zero)
 
   def autonomousInit(self):
     self.teleopInit()
@@ -104,38 +113,46 @@ class Robot(wpilib.IterativeRobot):
 
   def teleopInit(self):
     """Executed at the start of teleop mode"""
-    self.drive.setSafetyEnabled(True)
+    # self.drive.setSafetyEnabled(True)
+    self.compressor.start()
+    pass
 
   def teleopPeriodic(self):
     """Does stuff"""
-    distance = self.front_lift.getSelectedSensorPosition() - self.init_distance
+    real_distance = self.encoder.getSelectedSensorPosition(0)
+
+    distance = real_distance - self.init_distance
+    distance *= 1
+    
+    # self.logger(repr(self.stage))
     desired_distance = self.stages[self.stage]
     
-    self.drive.arcadeDrive(self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
+    self.drive.arcadeDrive(-self.stick_drive.getRawAxis(self.AXIS_THROTTLE), self.stick_drive.getRawAxis(self.AXIS_STEER))
 
-    input_forward = self.stick_lift.getRawAxis(self.AXIS_REAR_FORWARD)
-    input_reverse = self.stick_lift.getRawAxis(self.AXIS_REAR_REVERSE)
+    input_forward = self.stick_drive.getRawAxis(self.AXIS_REAR_FORWARD)
+    input_reverse = self.stick_drive.getRawAxis(self.AXIS_REAR_REVERSE)
 
-    self.rear_drive.arcadeDrive((input_forward if input_forward > input_reverse else input_reverse) * 0.5, 0)
+    self.rear_drive.arcadeDrive(input_forward if input_forward > input_reverse else -input_reverse, 0)
 
     self.shift.set(self.shift.Value.kForward if self.stick_drive.getRawButton(self.BUTTON_SHIFT) else self.shift.Value.kReverse)
     self.arm_fire.set(self.arm_fire.Value.kForward if self.stick_lift.getRawButton(self.BUTTON_FIRE) else self.arm_fire.Value.kReverse)
+    self.unlock.set(self.unlock.Value.kForward if self.stick_lift.getRawButton(self.BUTTON_UNLOCK) else self.unlock.Value.kReverse)
 
-    if self.stick_lift.getPOV() == self.POV_UP and self.stage < len(self.stages):
-      self.stage += 1
-    elif self.stick_lift.getPOV() == self.POV_DOWN and self.stage > 0:
-      self.stage -= 1
+    if self.stick_lift.getPOV() == self.POV_UP:
+      self.stage = 1
+    elif self.stick_lift.getPOV() == self.POV_DOWN:
+      self.stage = 0
 
-    if abs(self.stick_lift.getRawAxis(self.AXIS_LIFT)) > 0.25 or self.stick_lift.getRawButton(self.BUTTON_STALL):
+    lift_auto_power = max(-1, min(1, (desired_distance - distance) / 1024))
+
+    if abs(self.stick_lift.getRawAxis(self.AXIS_LIFT)) > 0.15 or self.stick_lift.getRawButton(self.BUTTON_STALL):
       self.lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_LIFT), 0)
-    elif abs(desired_distance - distance) > 200:
-      # self.lift.arcadeDrive(2 * sigmoid(delta_distance / 100) - 1, 0)
-      self.lift.arcadeDrive(
-        min(1, (desired_distance - distance ) / 2048), 0
-      )
+    # auto code
+    # elif abs(desired_distance - distance) > 200:
+      # self.lift.arcadeDrive(lift_auto_power, 0)
     else:
       self.lift.arcadeDrive(0, 0)
-    self.rear_lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_REAR_LIFT), 0)
+    self.rear_lift.arcadeDrive(-self.stick_lift.getRawAxis(self.AXIS_REAR_LIFT), 0)
 
     # current_pitch = self.camera_pitch.get()
     # current_yaw = self.camera_yaw.get()
@@ -144,8 +161,12 @@ class Robot(wpilib.IterativeRobot):
 
     if self.log_timer.hasPeriodPassed(0.5):
       self.logger.info(repr({
+        "init_ditance": self.init_distance,
+        "real_distance": real_distance,
         "distance": distance,
-        "desired_distance": desired_distance
+        "desired_distance": desired_distance,
+        "stage": self.stage,
+        "delta": lift_auto_power,
       }))
       self.log_timer.reset()
 
@@ -153,6 +174,11 @@ class Robot(wpilib.IterativeRobot):
     #   self.camera_pitch.set(max(0, min(1, current_pitch + input_pitch * 0.05)))
     # if abs(input_yaw) > 0.15:
     #   self.camera_yaw.set(max(0, min(1, current_yaw + input_yaw * 0.05)))
+
+  def testInit(self):
+    self.compressor.stop()
+
+  testPeriodic = teleopPeriodic
 
 if __name__ == "__main__":
   wpilib.run(Robot)
