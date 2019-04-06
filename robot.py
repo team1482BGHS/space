@@ -23,6 +23,7 @@ def sigmoid(x):
 
 class Robot(wpilib.IterativeRobot):
   """Deep space 2019 robot code"""
+
   # stick 1
   AXIS_THROTTLE = 1  # l stick
   AXIS_STEER = 0  # l stick
@@ -38,8 +39,9 @@ class Robot(wpilib.IterativeRobot):
   BUTTON_STALL = 6  # r bumper
   BUTTON_FIRE = 1  # a
   BUTTON_UNLOCK = 2  # b
-  POV_UP = 0
-  POV_DOWN = 180
+  BUTTON_RESET = 8  # start button
+  POV_UP = 0  # pov up
+  POV_DOWN = 180  # pov down
 
   def robotInit(self):
     """Robot initialization function"""
@@ -59,7 +61,7 @@ class Robot(wpilib.IterativeRobot):
     self.rear_lift = ctre.WPI_TalonSRX(2)
     self.encoder = self.front_lift
 
-    self.front_lift.setInverted(True)
+    # self.front_lift.setInverted(True)
 
     self.drive = wpilib.drive.DifferentialDrive(
       wpilib.SpeedControllerGroup(self.front_left_drive, self.rear_left_drive),
@@ -102,8 +104,9 @@ class Robot(wpilib.IterativeRobot):
     # camera.setFPS(15)
 
     self.stage = 0
-    self.stages = [0, 27600]  # 37 inches to travel, 4.76 in/rotation, 4096 units/rotation
-    self.init_distance = self.encoder.getSelectedSensorPosition(0)  # lifter should be at bottom (zero)
+    self.stages = [0, 26000]  # 37 inches to travel, 4.76 in/rotation, 4096 units/rotation
+    self.encoder.setSelectedSensorPosition(0)
+    # self.encoder.setSensorPhase(True)
 
   def autonomousInit(self):
     self.teleopInit()
@@ -119,10 +122,10 @@ class Robot(wpilib.IterativeRobot):
 
   def teleopPeriodic(self):
     """Does stuff"""
-    real_distance = self.encoder.getSelectedSensorPosition(0)
+    distance = self.encoder.getSelectedSensorPosition()
 
-    distance = real_distance - self.init_distance
-    distance *= 1
+    # distance = real_distance - self.init_distance
+    # distance *= 1
     
     # self.logger(repr(self.stage))
     desired_distance = self.stages[self.stage]
@@ -142,14 +145,16 @@ class Robot(wpilib.IterativeRobot):
       self.stage = 1
     elif self.stick_lift.getPOV() == self.POV_DOWN:
       self.stage = 0
+    elif self.stick_lift.getRawButton(self.BUTTON_RESET):
+      self.encoder.setSelectedSensorPosition(0)
 
     lift_auto_power = max(-1, min(1, (desired_distance - distance) / 1024))
 
     if abs(self.stick_lift.getRawAxis(self.AXIS_LIFT)) > 0.15 or self.stick_lift.getRawButton(self.BUTTON_STALL):
-      self.lift.arcadeDrive(self.stick_lift.getRawAxis(self.AXIS_LIFT), 0)
+      self.lift.arcadeDrive(-self.stick_lift.getRawAxis(self.AXIS_LIFT), 0)
     # auto code
-    # elif abs(desired_distance - distance) > 200:
-      # self.lift.arcadeDrive(lift_auto_power, 0)
+    elif abs(desired_distance - distance) > 200:
+      self.lift.arcadeDrive(lift_auto_power * 0.8, 0)
     else:
       self.lift.arcadeDrive(0, 0)
     self.rear_lift.arcadeDrive(-self.stick_lift.getRawAxis(self.AXIS_REAR_LIFT), 0)
@@ -161,8 +166,8 @@ class Robot(wpilib.IterativeRobot):
 
     if self.log_timer.hasPeriodPassed(0.5):
       self.logger.info(repr({
-        "init_ditance": self.init_distance,
-        "real_distance": real_distance,
+        "init_ditance": 0, # self.init_distance,
+        # "real_distance": real_distance,
         "distance": distance,
         "desired_distance": desired_distance,
         "stage": self.stage,
